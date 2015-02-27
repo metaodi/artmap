@@ -1,0 +1,3 @@
+[submodule "geodict"]
+	path = geodict
+	url = https://github.com/petewarden/geodict.git
