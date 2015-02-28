@@ -10,7 +10,7 @@ total = 0
 results = {}
 results['type'] = "FeatureCollection"
 results['features'] = []
-limit = 2
+limit = 100
 
 location_words = [
     'im',
@@ -28,7 +28,6 @@ continue_words = [
 ]
 
 def ask_nominatim(candidate, the_one):
-    print "Candidate: %s" % candidate        
     if not candidate[0].isupper():
         return the_one
     r = requests.get('https://nominatim.openstreetmap.org/search?countrycodes=CH&format=json&q=' + candidate)
@@ -50,7 +49,7 @@ for record in tree.findall('record'):
 index = range(0, len(rec_arr))
 random.shuffle(index)
 
-for idx in index:
+for pos, idx in enumerate(index):
     record = rec_arr[idx]
     if total >= limit:
         break
@@ -58,10 +57,12 @@ for idx in index:
     the_one = None
     words = []
     total += 1
+    place = record.find('Ort')
+    if place is not None and place <> 'Unknown':
+        words = words + [place.text]
     descr = record.find('TitelName')
-    place = record.find('Ort').text
     if descr is not None:
-        words = [place] + descr.text.split(' ')
+        words = words + descr.text.split(' ')
 
     for i, candidate in enumerate(words):
         the_one = ask_nominatim(candidate, the_one)
@@ -92,9 +93,9 @@ for idx in index:
         geores['properties'] = props
 
         results['features'].append(geores)
-        print "FOUND: %s: %s" % (props['name'], props['location'])
+        print "%s/%s: FOUND: %s (%s): %s" % (pos + 1, limit, props['name'], place.text, props['location'])
     else:
-        print "NOT FOUND: %s" % (descr.text)
+        print "%s/%s: NOT FOUND: %s (%s)" % (pos + 1, limit, props['name'], place.text)
 
 
 with open('output/output.geojson', 'w') as outfile:
