@@ -59,8 +59,9 @@ for idx in index:
     words = []
     total += 1
     descr = record.find('TitelName')
+    place = record.find('Ort').text
     if descr is not None:
-        words = descr.text.split(' ')
+        words = [place] + descr.text.split(' ')
 
     for i, candidate in enumerate(words):
         the_one = ask_nominatim(candidate, the_one)
@@ -82,6 +83,8 @@ for idx in index:
         props = {}
         props['name'] = descr.text
         props['location'] = the_one['display_name']
+        props['url'] = record.find('SourceURL').text
+        props['id'] = record.find('Signatur').text
 
         geores = {}
         geores['type'] = "Feature"
