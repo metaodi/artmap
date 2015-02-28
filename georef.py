@@ -3,10 +3,12 @@ from pprint import pprint
 import requests
 import time
 import random
+import json
 
 tree = etree.parse("MetadataGugelmann.xml")
 total = 0
-matches = 0
+results = []
+limit = 10
 
 location_words = [
     'im',
@@ -42,13 +44,13 @@ rec_arr = []
 for record in tree.findall('record'):
     rec_arr.append(record)
 
-# get 10 random index from 0 to len(rec_arr)
+# make a random selection from the input
 index = range(0, len(rec_arr))
 random.shuffle(index)
 
 for idx in index:
     record = rec_arr[idx]
-    if total >= 100:
+    if total >= limit:
         break
     candidate = None
     the_one = None
@@ -71,11 +73,27 @@ for idx in index:
 
 
     if the_one is not None:
-        print "Found match %s for %s" % (the_one['display_name'], descr.text)
-        matches += 1
-    else:
-        print "NO match found for %s" % (descr.text)
+        gmetry = {}
+        gmetry['type'] = "Point"
+        gmetry['coordinates'] = [ float(the_one['lat']), float(the_one['lon']) ]
 
+        props = {}
+        props['name'] = descr.text
+        props['location'] = the_one['display_name']
+
+        geores = {}
+        geores['type'] = "Feature"
+        geores['geometry'] = gmetry
+        geores['properties'] = props
+
+        results.append(geores)
+        print "FOUND: %s: %s" % (props['name'], props['location'])
+    else:
+        print "NOT FOUND: %s" % (descr.text)
+
+
+with open('output.geojson', 'w') as outfile:
+    json.dump(results, outfile)
 
 print "Total: %s" % total
-print "Matches: %s" % matches
+print "Matches: %s" % len(results)
