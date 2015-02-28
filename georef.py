@@ -57,9 +57,15 @@ for pos, idx in enumerate(index):
     the_one = None
     words = []
     total += 1
+
+    id = record.find('Signatur')
+    if id is not None:
+        id = id.text
+
     place = record.find('Ort')
-    if place is not None and place <> 'Unknown':
+    if place is not None and place.text != 'Unknown':
         words = words + [place.text]
+
     descr = record.find('TitelName')
     if descr is not None:
         words = words + descr.text.split(' ')
@@ -85,7 +91,7 @@ for pos, idx in enumerate(index):
         props['name'] = descr.text
         props['location'] = the_one['display_name']
         props['url'] = record.find('SourceURL').text
-        props['id'] = record.find('Signatur').text
+        props['id'] = id
 
         geores = {}
         geores['type'] = "Feature"
@@ -93,13 +99,13 @@ for pos, idx in enumerate(index):
         geores['properties'] = props
 
         results['features'].append(geores)
-        print "%s/%s: FOUND: %s (%s): %s" % (pos + 1, limit, props['name'], place.text, props['location'])
+        print "%s/%s: FOUND: %s: %s (%s): %s" % (pos + 1, limit, id, props['name'], place.text, props['location'])
     else:
-        print "%s/%s: NOT FOUND: %s (%s)" % (pos + 1, limit, props['name'], place.text)
+        print "%s/%s: NOT FOUND: %s: %s (%s)" % (pos + 1, limit, id, descr.text, place.text)
 
 
 with open('output/output.geojson', 'w') as outfile:
     json.dump(results, outfile)
 
 print "Total: %s" % total
-print "Matches: %s" % len(results)
+print "Matches: %s" % len(results['features'])
