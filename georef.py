@@ -4,13 +4,14 @@ import requests
 import time
 import random
 import json
+import os.path
 
 tree = etree.parse("MetadataGugelmann.xml")
 total = 0
 results = {}
 results['type'] = "FeatureCollection"
 results['features'] = []
-limit = 100
+limit = 3000
 
 location_words = [
     'im',
@@ -47,7 +48,7 @@ for record in tree.findall('record'):
 
 # make a random selection from the input
 index = range(0, len(rec_arr))
-random.shuffle(index)
+# random.shuffle(index)
 
 for pos, idx in enumerate(index):
     record = rec_arr[idx]
@@ -61,6 +62,9 @@ for pos, idx in enumerate(index):
     id = record.find('Signatur')
     if id is not None:
         id = id.text
+        if os.path.isfile('output/' + id + '.json'):
+            print '%s/%s: SKIP: %s' % (pos + 1, len(rec_arr), id)
+            continue
 
     place = record.find('Ort')
     if place is not None and place.text != 'Unknown':
@@ -99,13 +103,14 @@ for pos, idx in enumerate(index):
         geores['properties'] = props
 
         results['features'].append(geores)
-        print "%s/%s: FOUND: %s: %s (%s): %s" % (pos + 1, limit, id, props['name'], place.text, props['location'])
+        with open('output/' + id + '.json', 'w') as outfile:
+            json.dump(geores, outfile)
+
+        print "%s/%s: FOUND: %s: %s (%s): %s" % (pos + 1, len(rec_arr), id, props['name'], place.text, props['location'])
     else:
-        print "%s/%s: NOT FOUND: %s: %s (%s)" % (pos + 1, limit, id, descr.text, place.text)
+        open('output/' + id + '.json', 'a').close()
+        print "%s/%s: NOT FOUND: %s: %s (%s)" % (pos + 1, len(rec_arr), id, descr.text, place.text)
 
-
-with open('output/output.geojson', 'w') as outfile:
-    json.dump(results, outfile)
 
 print "Total: %s" % total
 print "Matches: %s" % len(results['features'])
