@@ -7,8 +7,10 @@ import json
 
 tree = etree.parse("MetadataGugelmann.xml")
 total = 0
-results = []
-limit = 10
+results = {}
+results['type'] = "FeatureCollection"
+results['features'] = []
+limit = 2
 
 location_words = [
     'im',
@@ -75,7 +77,7 @@ for idx in index:
     if the_one is not None:
         gmetry = {}
         gmetry['type'] = "Point"
-        gmetry['coordinates'] = [ float(the_one['lat']), float(the_one['lon']) ]
+        gmetry['coordinates'] = [ float(the_one['lon']), float(the_one['lat']) ]
 
         props = {}
         props['name'] = descr.text
@@ -86,13 +88,13 @@ for idx in index:
         geores['geometry'] = gmetry
         geores['properties'] = props
 
-        results.append(geores)
+        results['features'].append(geores)
         print "FOUND: %s: %s" % (props['name'], props['location'])
     else:
         print "NOT FOUND: %s" % (descr.text)
 
 
-with open('output.geojson', 'w') as outfile:
+with open('output/output.geojson', 'w') as outfile:
     json.dump(results, outfile)
 
 print "Total: %s" % total
