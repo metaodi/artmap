@@ -3,10 +3,15 @@ from pprint import pprint
 import requests
 import time
 import random
+import json
+import os.path
 
 tree = etree.parse("MetadataGugelmann.xml")
 total = 0
-matches = 0
+results = {}
+results['type'] = "FeatureCollection"
+results['features'] = []
+limit = 3000
 
 location_words = [
     'im',
@@ -24,7 +29,6 @@ continue_words = [
 ]
 
 def ask_nominatim(candidate, the_one):
-    print "Candidate: %s" % candidate        
     if not candidate[0].isupper():
         return the_one
     r = requests.get('https://nominatim.openstreetmap.org/search?countrycodes=CH&format=json&q=' + candidate)
@@ -42,21 +46,33 @@ rec_arr = []
 for record in tree.findall('record'):
     rec_arr.append(record)
 
-# get 10 random index from 0 to len(rec_arr)
+# make a random selection from the input
 index = range(0, len(rec_arr))
-random.shuffle(index)
+# random.shuffle(index)
 
-for idx in index:
+for pos, idx in enumerate(index):
     record = rec_arr[idx]
-    if total >= 100:
+    if total >= limit:
         break
     candidate = None
     the_one = None
     words = []
     total += 1
+
+    id = record.find('Signatur')
+    if id is not None:
+        id = id.text
+        if os.path.isfile('output/' + id + '.json'):
+            print '%s/%s: SKIP: %s' % (pos + 1, len(rec_arr), id)
+            continue
+
+    place = record.find('Ort')
+    if place is not None and place.text != 'Unknown':
+        words = words + [place.text]
+
     descr = record.find('TitelName')
     if descr is not None:
-        words = descr.text.split(' ')
+        words = words + descr.text.split(' ')
 
     for i, candidate in enumerate(words):
         the_one = ask_nominatim(candidate, the_one)
@@ -71,11 +87,30 @@ for idx in index:
 
 
     if the_one is not None:
-        print "Found match %s for %s" % (the_one['display_name'], descr.text)
-        matches += 1
+        gmetry = {}
+        gmetry['type'] = "Point"
+        gmetry['coordinates'] = [ float(the_one['lon']), float(the_one['lat']) ]
+
+        props = {}
+        props['name'] = descr.text
+        props['location'] = the_one['display_name']
+        props['url'] = record.find('SourceURL').text
+        props['id'] = id
+
+        geores = {}
+        geores['type'] = "Feature"
+        geores['geometry'] = gmetry
+        geores['properties'] = props
+
+        results['features'].append(geores)
+        with open('output/' + id + '.json', 'w') as outfile:
+            json.dump(geores, outfile)
+
+        print "%s/%s: FOUND: %s: %s (%s): %s" % (pos + 1, len(rec_arr), id, props['name'], place.text, props['location'])
     else:
-        print "NO match found for %s" % (descr.text)
+        open('output/' + id + '.json', 'a').close()
+        print "%s/%s: NOT FOUND: %s: %s (%s)" % (pos + 1, len(rec_arr), id, descr.text, place.text)
 
 
 print "Total: %s" % total
-print "Matches: %s" % matches
+print "Matches: %s" % len(results['features'])
